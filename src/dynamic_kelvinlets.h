@@ -1,5 +1,7 @@
 #include <igl/PI.h>
 #include <Eigen/Dense>
+#include <polyscope/polyscope.h>
+#include <polyscope/surface_mesh.h>
 
 enum class BrushType : int
 {
@@ -11,16 +13,16 @@ enum class BrushType : int
 
 class DynamicKelvinlets {
     public:
-    const double dt = 0.1;
-    const double Ps = 0.5;
-    const double Ym = 1.0;
-    const double a = 1/(4*3.1415926*Ym);
-    const double b = a/(4*(1-Ps));
-    const double c = 2/(3*a-2*b);
-    Eigen::MatrixX3d V;
-    const double epsilon = 1e-5;
+    const double dt = 0.01;
+    const double Ps = 0.45;
+    const double Ym = 3.5;
+    const double beta = std::sqrt(Ps);
+    const double alpha = beta*std::sqrt(1.+1./(1.-2.*Ym));
+    const double epsilon = 1;
 
-    double t = 0.0;
+    Eigen::MatrixX3d V;
+
+    double time = 0.0;
 
     DynamicKelvinlets(const Eigen::MatrixX3d& OV_): V(OV_) {}
 
@@ -61,22 +63,31 @@ class DynamicKelvinlets {
     }
 
     inline Eigen::ArrayXd A(const Eigen::ArrayXd r, const double t) {
-        return U(r, t, a) + 2*U(r, t, b) + r*dUdr(r, t, b);
+        return U(r, t, alpha) + 2*U(r, t, beta) + r*dUdr(r, t, beta);
     }
 
     inline Eigen::ArrayXd B(const Eigen::ArrayXd r, const double t) {
-        return (dUdr(r, t, a) - dUdr(r, t, b)) * r.inverse();
+        return (dUdr(r, t, alpha) - dUdr(r, t, beta)) * r.inverse();
     }
 
     inline Eigen::ArrayXd dAdr(const Eigen::ArrayXd r, const double t) {
-        return dUdr(r, t, a) + 3*dUdr(r, t, b) + r*dUdrr(r, t, b);
+        return dUdr(r, t, alpha) + 3*dUdr(r, t, beta) + r*dUdrr(r, t, beta);
     }
 
     inline Eigen::ArrayXd dBdr(const Eigen::ArrayXd r, const double t) {
-        return (dUdrr(r, t, a) - dUdrr(r, t, b) - B(r, t)) * r.inverse();
+        return (dUdrr(r, t, alpha) - dUdrr(r, t, beta) - B(r, t)) * r.inverse();
     }
 
-    void compute(BrushType brush_type = BrushType::GRAB, Eigen::Vector3d x0 = Eigen::Vector3d::Zero(), Eigen::Matrix3d force = Eigen::Matrix3d::Identity()) {
+    void step(BrushType brush_type = BrushType::GRAB, Eigen::Vector3d x0 = Eigen::Vector3d::Zero(), Eigen::Matrix3d force = Eigen::Matrix3d::Zero()) {
+        Eigen::MatrixX3d u0 = compute(V, brush_type, x0, force, time);
+        Eigen::MatrixX3d u1 = compute(V+0.5*u0, brush_type, x0, force, time);
+        Eigen::MatrixX3d u2 = compute(V+0.5*u1, brush_type, x0, force, time);
+        Eigen::MatrixX3d u3 = compute(V+u2, brush_type, x0, force, time);
+        V += dt * (u0 + 2.*u1 + 2.*u2 + u3) / 6.;
+        time += dt;
+    }
+
+    Eigen::MatrixX3d compute(const Eigen::MatrixX3d V, const BrushType brush_type, const Eigen::Vector3d x0, const Eigen::Matrix3d force, const double t) {
         const Eigen::MatrixX3d r = (V.rowwise()-x0.transpose()).array();
         const Eigen::ArrayXd r_norm = r.rowwise().norm().array();
         const Eigen::ArrayXd r_inv = r_norm.inverse();
@@ -99,11 +110,12 @@ class DynamicKelvinlets {
             default:
             break;
         }
-        V += dt * u.matrix();
-        t += dt;
+
+        return u.matrix();
     }
 
     void reset(const Eigen::MatrixX3d& V_) {
+        time = 0.0;
         V = V_;
     }
 };
