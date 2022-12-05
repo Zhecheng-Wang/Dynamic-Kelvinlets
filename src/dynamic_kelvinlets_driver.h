@@ -3,6 +3,7 @@
 
 class DynamicKelvinletsDriver {
     public:
+    const int steps = 10000;
     const Eigen::MatrixX3d OV;
     const Eigen::MatrixXi OF;
     DynamicKelvinlets kelvinlets;
@@ -16,7 +17,7 @@ class DynamicKelvinletsDriver {
     void drawGUI() {
         if (ImGui::Button("Grab")) {
             brush_type = BrushType::GRAB;
-            kelvinlets.step(brush_type, center);
+            kelvinlets.displace(brush_type, center);
             mesh->updateVertexPositions(kelvinlets.V);
         }
         ImGui::SameLine();
@@ -24,31 +25,40 @@ class DynamicKelvinletsDriver {
             brush_type = BrushType::TWIST;
             Eigen::Matrix3d twist_matrix;
             twist_matrix << 0, 1, -1, -1, 0, 1, 1, -1, 0;
-            kelvinlets.step(brush_type, center, twist_matrix);
+            kelvinlets.dt = 0.01;
+            kelvinlets.Ym = 100000;
+            kelvinlets.epsilon = 1.5;
+            twist_matrix *= 0.25;
+            kelvinlets.displace(brush_type, center, twist_matrix);
             mesh->updateVertexPositions(kelvinlets.V);
         }
         ImGui::SameLine();
         if (ImGui::Button("Scale")) {
             brush_type = BrushType::SCALE;
-            kelvinlets.step(brush_type, center, Eigen::Matrix3d::Identity());
+            Eigen::Matrix3d scale_matrix = Eigen::Matrix3d::Identity();
+            kelvinlets.dt = 0.0075;
+            kelvinlets.Ym = 50000;
+            kelvinlets.epsilon = 1;
+            scale_matrix *= 1;
+            kelvinlets.displace(brush_type, center, scale_matrix);
             mesh->updateVertexPositions(kelvinlets.V);
         }
         ImGui::SameLine();
         if (ImGui::Button("Pinch")) {
-            brush_type = BrushType::GRAB;
+            brush_type = BrushType::PINCH;
             Eigen::Matrix3d pinch_matrix;
             pinch_matrix << 0, 1, 1, 1, 0, 1, 1, 1, 0;
-            kelvinlets.step(brush_type, center, pinch_matrix);
-            mesh->updateVertexPositions(kelvinlets.V);
-        }
-        if (ImGui::Button("Step")) {
-            kelvinlets.step(brush_type, center);
+            kelvinlets.dt = 0.01;
+            kelvinlets.Ym = 250000;
+            kelvinlets.epsilon = 1.5;
+            pinch_matrix *= 0.25;
+            kelvinlets.displace(brush_type, center, pinch_matrix);
             mesh->updateVertexPositions(kelvinlets.V);
         }
         ImGui::SameLine();
         if (ImGui::Button("Reset")) {
-            kelvinlets.reset(OV);
-            mesh->updateVertexPositions(kelvinlets.V);
+            kelvinlets.time = 0;
+            mesh->updateVertexPositions(kelvinlets.OV);
         }
     }
 };

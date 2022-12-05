@@ -13,18 +13,19 @@ enum class BrushType : int
 
 class DynamicKelvinlets {
     public:
-    const double dt = 0.01;
-    const double Ps = 0.45;
-    const double Ym = 3.5;
-    const double beta = std::sqrt(Ps);
-    const double alpha = beta*std::sqrt(1.+1./(1.-2.*Ym));
-    const double epsilon = 1;
+    double dt = 0.005;
+    double Ps = 0.45;
+    double Ym = 100;
+    double beta = std::sqrt(Ym);
+    double alpha = beta*std::sqrt(1.+1./(1.-2.*Ps));
+    double epsilon = 1;
 
+    const Eigen::MatrixX3d OV;
     Eigen::MatrixX3d V;
 
     double time = 0.0;
 
-    DynamicKelvinlets(const Eigen::MatrixX3d& OV_): V(OV_) {}
+    DynamicKelvinlets(const Eigen::MatrixX3d& OV_): OV(OV_), V(OV_) {}
 
     inline Eigen::ArrayXd W(const Eigen::ArrayXd r, const Eigen::ArrayXd s) {
         const Eigen::ArrayXd s_epsilon = (s.matrix().rowwise().squaredNorm().array() + std::pow(epsilon, 2)).sqrt();
@@ -78,12 +79,15 @@ class DynamicKelvinlets {
         return (dUdrr(r, t, alpha) - dUdrr(r, t, beta) - B(r, t)) * r.inverse();
     }
 
-    void step(BrushType brush_type = BrushType::GRAB, Eigen::Vector3d x0 = Eigen::Vector3d::Zero(), Eigen::Matrix3d force = Eigen::Matrix3d::Zero()) {
+    void displace(BrushType brush_type = BrushType::GRAB, Eigen::Vector3d x0 = Eigen::Vector3d::Zero(), Eigen::Matrix3d force = Eigen::Matrix3d::Zero()) {
+        beta = std::sqrt(Ym);
+        alpha = beta*std::sqrt(1.+1./(1.-2.*Ps));
+        V = OV;
         Eigen::MatrixX3d u0 = compute(V, brush_type, x0, force, time);
         Eigen::MatrixX3d u1 = compute(V+0.5*u0, brush_type, x0, force, time);
         Eigen::MatrixX3d u2 = compute(V+0.5*u1, brush_type, x0, force, time);
         Eigen::MatrixX3d u3 = compute(V+u2, brush_type, x0, force, time);
-        V += dt * (u0 + 2.*u1 + 2.*u2 + u3) / 6.;
+        V += (u0 + 2.*u1 + 2.*u2 + u3) / 6.;
         time += dt;
     }
 
@@ -100,7 +104,7 @@ class DynamicKelvinlets {
                 u = (r*force).array().colwise() * (r_inv*dAdr(r_norm, t)-B(r_norm, t));
             } break;
             case BrushType::SCALE: {
-                const double s = -5.;
+                const double s = -50.;
                 u = (s*r).array().colwise() * (4.*B(r_norm, t)+r_inv*dAdr(r_norm, t)+r_norm*dBdr(r_norm, t));
             } break;
             case BrushType::PINCH: {
@@ -112,10 +116,5 @@ class DynamicKelvinlets {
         }
 
         return u.matrix();
-    }
-
-    void reset(const Eigen::MatrixX3d& V_) {
-        time = 0.0;
-        V = V_;
     }
 };

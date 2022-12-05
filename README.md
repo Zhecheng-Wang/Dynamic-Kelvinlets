@@ -16,8 +16,8 @@ Zhecheng Wang
 ### Working Brushes
 - [ ] Grab
 - [X] Twist
-- [ ] Scale
-- [ ] Pinch
+- [X] Scale
+- [X] Pinch
 
 ---
 ### Prerequisites
@@ -39,6 +39,28 @@ Initialize build folder and compile the code
     make
 
 To run the program, run ``kelvinlets`` in the ``build`` folder with a mesh in the ``data`` folder.
+For example,
+
+    ./kelvinlets ../data/spot_triangulated.obj
+
+### Documentation
+Note that all parameters are tuned for demonstration purpose. Kelvinlet algorithms are essentially a force field applied in the space, they are not aware of boundaries.
+
+Here are the three force fields I implemented and tested.
+
+Twisting
+$$\boldsymbol{t}(\boldsymbol{r},t) = \left[\frac{1}{r}\partial_r \mathcal{A}(r,t)-\mathcal{B}(r,t)\right]\boldsymbol{r} \times \boldsymbol{r}$$
+
+Scaling
+$$\boldsymbol{s}(\boldsymbol{r},t) = \left[4\mathcal{B}(r,t) + \frac{1}{r}\partial_r \mathcal{A}(r,t)+r\partial_r\mathcal{B}(r,t)\right]s\boldsymbol{r}$$
+
+Pinching
+$$\boldsymbol{p}(\boldsymbol{r},t) = \left[\frac{1}{r}\partial_r \mathcal{A}(r,t)+\mathcal{B}(r,t)\right]\boldsymbol{F}\boldsymbol{r} + \frac{1}{r}\partial_r\mathcal{B}(r,t)(\boldsymbol{r}^T\boldsymbol{F}\boldsymbol{r})\boldsymbol{r}$$
+
+### How To Use?
+Click the brush (Twist, Scale, Pinch) buttons on GUI to "time stepping" the mesh! After using every brush, please hit the "Reset" button to reset mesh state.
+
+By default, the force field center is always around the neck. So you will see deformation there.
 
 ---
 ### References

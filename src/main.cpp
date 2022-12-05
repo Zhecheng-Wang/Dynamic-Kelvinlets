@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
     polyscope::init();
 
     // add original mesh
-    polyscope::registerSurfaceMesh("Original", OV, OF);
+    polyscope::registerSurfaceMesh("Original", OV, OF)->setEnabled(false);
 
     // add morphed mesh
     DynamicKelvinletsDriver driver(OV, OF);
